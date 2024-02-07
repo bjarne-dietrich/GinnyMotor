@@ -69,6 +69,11 @@ void init()
         uint slice_num = pwm_gpio_to_slice_num(servo[i]);
         pwm_init(slice_num, &config, true);
     }
+    for (int i = 0; i < NUM_SERVOS; i++)
+    {
+        setDegree(0, i);
+    }
+
 
 
     // Init Motors
@@ -127,11 +132,6 @@ void core0loop()
             pwm_set_gpio_level(motorChB[i], 10000);
         }
         
-        for (int i = 0; i < NUM_SERVOS; i++)
-        {
-            setDegree(0, i);
-        }
-
         sleep_ms(3000);
         
         
@@ -142,10 +142,6 @@ void core0loop()
             pwm_set_gpio_level(motorChB[i], 20000);
         }
         
-        for (int i = 0; i < NUM_SERVOS; i++)
-        {
-            setDegree(15, i);
-        }
         sleep_ms(3000);
 
     

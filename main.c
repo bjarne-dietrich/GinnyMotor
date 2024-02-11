@@ -3,24 +3,34 @@
 #include "hardware/pwm.h"
 #include "pico/multicore.h"
 #include "pico/platform.h"
+#include "pico/util/queue.h"
 #include "hardware/clocks.h"
 
 void setDegree(float deg, int id);
 void encoderCallback(uint pin, uint32_t events);
+void setMotorOpening(int16_t opening, int id);
 void init();
 void core1loop();
 void core0loop();
+int16_t freq2opening(double freq);
 
 #define GEAR_RATIO 103
+#define GEAR_PULSES 11
+
+#define PID_Kp 2.5
+#define PID_Ki 4.0
+#define PID_Kd 0.0
+
+double target_freq = 0.3;
 
 #define NUM_SERVOS 4
-int servo[NUM_SERVOS] = {2,3,4,5};
+int servo[NUM_SERVOS] = {0,1,2,3};
 
-#define NUM_MOTORS 1
-int motorChA[NUM_MOTORS] = {14};
-int motorChB[NUM_MOTORS] = {15};
-int motorDecoderPinChA[NUM_MOTORS] = {10};
-int motorDecoderPinChB[NUM_MOTORS] = {17};
+#define NUM_MOTORS 2
+int motorChA[NUM_MOTORS] = {12, 14}; // 14
+int motorChB[NUM_MOTORS] = {13, 14}; // 15
+int motorDecoderPinChA[NUM_MOTORS] = {11, 10}; // 10
+int motorDecoderPinChB[NUM_MOTORS] = {16, 17}; // 17
 
 uint motorDecoderCounterChA[NUM_MOTORS] = {0};
 uint motorDecoderCounterChB[NUM_MOTORS] = {0};
@@ -28,9 +38,15 @@ uint motorDecoderCounterChB[NUM_MOTORS] = {0};
 absolute_time_t motorDecoderTimerChA[NUM_MOTORS] = {0};
 absolute_time_t motorDecoderTimerChB[NUM_MOTORS] = {0};
 
+
 // T in us
 int64_t motorDecoderPeriodChA[NUM_MOTORS] = {0};
 int64_t motorDecoderPeriodChB[NUM_MOTORS] = {0};
+
+int64_t motorDecoderlastPeriodChA[NUM_MOTORS] = {0};
+int64_t motorDecoderlastPeriodChB[NUM_MOTORS] = {0};
+
+double motorDecoderTurnDirection[NUM_MOTORS] = {true};
 
 
 
@@ -48,7 +64,7 @@ void init()
 {
     stdio_init_all();
 
-    printf("%u\n", clock_get_hz(clk_sys));
+    //printf("%u\n", clock_get_hz(clk_sys));
 
     // Init led
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
@@ -79,6 +95,8 @@ void init()
     // Init Motors
     
     pwm_config config_motor = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 4);
+    pwm_config_set_clkdiv_mode(&config, PWM_DIV_FREE_RUNNING);
 
     for (int i = 0; i < NUM_MOTORS; i++)
     {
@@ -115,36 +133,82 @@ void init()
 
 void core1loop()
 {
+    double PID_esum[NUM_MOTORS] = {0};
+    double PID_ealt[NUM_MOTORS] = {0};
+
     while (true)
+
+    
     {
+        for (int motor_i = 0; motor_i < NUM_MOTORS; motor_i++)
+        {
+            int64_t mean_period = motorDecoderPeriodChA[motor_i] / motorDecoderCounterChA[motor_i];
+
+            if (motorDecoderCounterChA[motor_i] == 0 || motorDecoderPeriodChA[motor_i] == 0)
+            {
+                setMotorOpening(((target_freq > 0) ? 10000 : -10000), motor_i);
+                //printf("Target:%lf,Ref1:%f,Ref2:%f,NewF:%lf\n", target_freq, 0.7, 0.0, ((target_freq > 0) ? 0.5 : -0.5));
+                
+            }
+            else
+            {
+                motorDecoderCounterChA[motor_i] = 0;
+                motorDecoderPeriodChA[motor_i] = 0;
+
+
+                int64_t revolution_time = mean_period * GEAR_PULSES * GEAR_RATIO;
+                double wheel_freq = motorDecoderTurnDirection[motor_i] / ( (double) revolution_time / 1e6);
+                double err = (target_freq - wheel_freq);
+                
+
+                PID_esum[motor_i] += err;
+
+                double new_freq = (err * PID_Kp) + (PID_Kd * (err - PID_ealt[motor_i]) * 0.01) + (PID_Ki * PID_esum[motor_i]  * 0.01);
+            
+                int16_t new_opening = freq2opening(new_freq);
+
+                PID_ealt[motor_i] = err;
+
+                //printf("Target:%lf,Wheel:%lf,Ref1:%f,Ref2:%f,Err:%lf,NewF:%lf,eSUM:%lf\n", target_freq, wheel_freq, 0.7, 0.0, err, new_freq, PID_esum);
+                
+                setMotorOpening(new_opening, motor_i);
+            }
+
+            sleep_ms(10);
+        }
     }
 }
 
 void core0loop()
 {
         while (true) {
-
-        
-
-        for (int i = 0; i < NUM_MOTORS; i++)
-        {
-            pwm_set_gpio_level(motorChA[i], 0);
-            pwm_set_gpio_level(motorChB[i], 10000);
-        }
-        
-        sleep_ms(3000);
-        
-        
-
-        for (int i = 0; i < NUM_MOTORS; i++)
-        {
-            pwm_set_gpio_level(motorChA[i], 0);
-            pwm_set_gpio_level(motorChB[i], 20000);
-        }
-        
-        sleep_ms(3000);
-
-    
+            target_freq = 0.5;
+            for(int deg = 0; deg < 50; deg++)
+            {
+                for (int i = 0; i < NUM_SERVOS; i++)
+                {
+                    //setDegree(deg, i);
+                }
+                sleep_ms(20);
+            }
+            target_freq = 0.5;
+            for(int deg = 50; deg > -50; deg--)
+            {
+                for (int i = 0; i < NUM_SERVOS; i++)
+                {
+                    //setDegree(deg, i);
+                }
+                sleep_ms(20);
+            }
+            target_freq = 0.7;
+            for(int deg = -50; deg < 0; deg++)
+            {
+                for (int i = 0; i < NUM_SERVOS; i++)
+                {
+                    //setDegree(deg, i);
+                }
+                sleep_ms(20);
+            }
 
     }
 }
@@ -163,12 +227,23 @@ void setMotorOpening(int16_t opening, int id)
 {
     if (opening > 0) {
         pwm_set_gpio_level(motorChA[id], 0);
-        pwm_set_gpio_level(motorChB[id], opening * 2);
+        if (opening >= INT16_MAX)
+        {
+            pwm_set_gpio_level(motorChB[id], UINT16_MAX);
+        }else {
+            pwm_set_gpio_level(motorChB[id], opening * 2);
+        }
+        
         return;
     }
     if (opening < 0) {
         pwm_set_gpio_level(motorChB[id], 0);
-        pwm_set_gpio_level(motorChA[id], opening * 2);
+        if (opening <= INT16_MIN)
+        {
+            pwm_set_gpio_level(motorChA[id], UINT16_MAX);
+        }else {
+            pwm_set_gpio_level(motorChA[id], opening * 2);
+        }
         return;
     }
 
@@ -180,7 +255,7 @@ void setMotorOpening(int16_t opening, int id)
 void encoderCallback(uint pin, uint32_t events)
 {
  
- // printf("Trigeered: %u, Core %u,", pin, get_core_num());
+ printf("Trigger: %u, Core %u\n", pin, get_core_num());
  for (int i = 0; i < NUM_MOTORS; i++)
  {
     if (pin == motorDecoderPinChA[i])
@@ -188,16 +263,57 @@ void encoderCallback(uint pin, uint32_t events)
         absolute_time_t last_time = motorDecoderTimerChA[i];
         absolute_time_t current_time = get_absolute_time();
 
-        motorDecoderPeriodChA[i] = absolute_time_diff_us(last_time, current_time);
-        printf("Trigeered: %u, Core %u, T: %ld, rpm: ", pin, get_core_num(), motorDecoderPeriodChA[i]);
+        int64_t period = absolute_time_diff_us(last_time, current_time);
 
+        motorDecoderPeriodChA[i] += period;
+        motorDecoderlastPeriodChA[i] = period;
+        motorDecoderTimerChA[i] = current_time;
         motorDecoderCounterChA[i]++;
     }
     if (pin == motorDecoderPinChB[i])
     {
+        absolute_time_t last_time = motorDecoderTimerChB[i];
+        absolute_time_t current_time = get_absolute_time();
+
+
+        int64_t phase_time = absolute_time_diff_us(motorDecoderTimerChA[i], current_time);
+
+        int64_t period = absolute_time_diff_us(last_time, current_time);
+
+        if ( ( ((float)phase_time) / (float) period ) > 0.5 )
+        {
+            motorDecoderTurnDirection[i] = -1;
+        }
+        else {
+            motorDecoderTurnDirection[i] = 1;
+        }
+        //printf("%lld, %lld, %f\n", phase_time, period, ( ((float)phase_time) / (float) period ));
+
+        motorDecoderlastPeriodChA[i] - period;
+
+        motorDecoderPeriodChB[i] += period;
+        motorDecoderlastPeriodChB[i] = period;
+        motorDecoderTimerChB[i] = current_time;
         motorDecoderCounterChB[i]++;
 
     }
  }
+
+}
+
+int16_t freq2opening(double freq)
+{
+    //max: 32767
+
+    if (freq > 0.75)
+        return 32767;
+
+    if (freq < -0.75)
+        return -32767;
+
+    return (int16_t) (freq * 43680);
+    
+
+
 
 }

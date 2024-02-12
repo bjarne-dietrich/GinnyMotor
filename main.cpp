@@ -5,6 +5,7 @@
 #include "pico/platform.h"
 #include "pico/util/queue.h"
 #include "hardware/clocks.h"
+#include "PwmIn/PwmIn.h"
 
 void setDegree(float deg, int id);
 void encoderCallback(uint pin, uint32_t events);
@@ -54,9 +55,26 @@ double motorDecoderTurnDirection[NUM_MOTORS] = {true};
 int main() {
     init();
 
-    multicore_launch_core1(core1loop);
+    printf("PwmIn on 2 pins\n");
 
-    core0loop();
+    uint pin_list[2] = {2, 3};
+    PwmIn my_PwmIn(pin_list, 2);
+
+    while (true)
+    {
+        // adviced empty (for now) function of sdk
+        tight_loop_contents();
+
+        // translate pwm of input to output
+        float PW_0 = my_PwmIn.read_PW(0);
+        float PW_1 = my_PwmIn.read_PW(1);
+        printf("PW_0=%f PW_1=%f\n", PW_0, PW_1);
+        sleep_ms(100);
+    }
+
+
+    //multicore_launch_core1(core1loop);
+    //core0loop();
     
 }
 
@@ -74,7 +92,7 @@ void init()
 
 
     // Init Servos
-
+    /*
     pwm_config config = pwm_get_default_config();
     pwm_config_set_clkdiv(&config, 38.14);
     pwm_config_set_clkdiv_mode(&config, PWM_DIV_FREE_RUNNING);
@@ -126,6 +144,8 @@ void init()
         motorDecoderTimerChA[i] = get_absolute_time();
         motorDecoderTimerChB[i] = get_absolute_time();
     }
+
+    */
     
 
 

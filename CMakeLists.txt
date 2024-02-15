@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 
-add_subdirectory(PwmIn)
+add_subdirectory(MotorEncoder)
 
 # Link the Project to a source file (step 4.6)
 add_executable(${PROJECT_NAME}
@@ -28,7 +28,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     hardware_pwm
     hardware_gpio
     pico_multicore
-    PwmIn
+    MotorEncoder
 )
 
 

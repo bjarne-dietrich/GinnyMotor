@@ -5,7 +5,7 @@
 #include "pico/platform.h"
 #include "pico/util/queue.h"
 #include "hardware/clocks.h"
-#include "PwmIn/PwmIn.h"
+#include "MotorEncoder/MotorEncoder.h"
 
 void setDegree(float deg, int id);
 void encoderCallback(uint pin, uint32_t events);
@@ -55,20 +55,17 @@ double motorDecoderTurnDirection[NUM_MOTORS] = {true};
 int main() {
     init();
 
-    printf("PwmIn on 2 pins\n");
+    sleep_ms(2000);
+    printf("MotorEncoder on 2 pins\n");
 
-    uint pin_list[2] = {2, 3};
-    PwmIn my_PwmIn(pin_list, 2);
+    MotorEncoder my_MotorEncoder(2, 35000);
+    printf("Return: %d\n", my_MotorEncoder.init());
 
     while (true)
     {
         // adviced empty (for now) function of sdk
         tight_loop_contents();
-
-        // translate pwm of input to output
-        float PW_0 = my_PwmIn.read_PW(0);
-        float PW_1 = my_PwmIn.read_PW(1);
-        printf("PW_0=%f PW_1=%f\n", PW_0, PW_1);
+        printf("%d, %lf ms\n", my_MotorEncoder.get_dir(), my_MotorEncoder.get_period_us()*1e3);
         sleep_ms(100);
     }
 
@@ -77,6 +74,7 @@ int main() {
     //core0loop();
     
 }
+
 
 void init()
 {

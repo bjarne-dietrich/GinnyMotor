@@ -1,0 +1,25 @@
+.program MotorEncoder
+
+.wrap_target
+    pull
+    mov x osr         ; start with the value 0xFFFFFFFF
+    wait 0 pin 0        ; wait for a 0 on pin 0
+wait_low:    
+    wait 1 pin 0        ; wait for a 1 on pin 0
+    in pins, 2
+    push
+loop_high:
+    jmp x-- test
+    jmp timeout    ;
+test: 
+    jmp pin loop_high
+loop_low:
+    jmp pin finish
+    jmp x-- loop_low
+    jmp timeout
+finish:
+    mov isr x
+timeout:
+    push
+    irq wait 0 rel
+.wrap

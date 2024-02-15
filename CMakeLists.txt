@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 
-add_subdirectory(MotorEncoder)
+add_subdirectory(RP2040-motor-encoder/MotorEncoder)
 
 # Link the Project to a source file (step 4.6)
 add_executable(${PROJECT_NAME}
@@ -31,6 +31,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     MotorEncoder
 )
 
+target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/RP2040-motor-encoder")
 
 # Enable USB, UART output
 pico_enable_stdio_usb(${PROJECT_NAME} 1)

@@ -1,24 +1,24 @@
 #include "MotorEncoder.h"
 
-MotorEncoder_Manager* MotorEncoder_Manager::managerPtr = NULL; 
+MotorEncoder_Manager* MotorEncoder_Manager::manager_ptr = NULL; 
 
-MotorEncoder* MotorEncoder_Manager::getInstance(PIO pio, uint sm)
+MotorEncoder* MotorEncoder_Manager::get_instance(PIO pio, uint sm)
 {
-    return instances[getPioI(pio)*4 + sm];
+    return instances[get_pio_i(pio)*4 + sm];
 };
 
-PIO MotorEncoder_Manager::getUsedPIO()
+PIO MotorEncoder_Manager::get_used_pio()
 {
     for (int i = 0; i<8; i++){
         if (instances[i] != nullptr)
-            return instances[i]->getPIO();
+            return instances[i]->get_pio();
     }
     return nullptr;
 };
 
 bool MotorEncoder_Manager::is_pio_used(PIO pio)
 {
-    uint pio_i = getPioI(pio);
+    uint pio_i = get_pio_i(pio);
     for (int i = 0; i<4; i++){
         if (instances[4*pio_i + i] != nullptr)
             return true;
@@ -28,17 +28,17 @@ bool MotorEncoder_Manager::is_pio_used(PIO pio)
 
 uint MotorEncoder_Manager::get_prog_offset(PIO pio)
 {
-    return prog_offset[getPioI(pio)];
+    return prog_offset[get_pio_i(pio)];
 };
 
 void MotorEncoder_Manager::set_prog_offset(PIO pio, uint offset)
 {
-    prog_offset[getPioI(pio)] = offset;
+    prog_offset[get_pio_i(pio)] = offset;
 };
 
 void MotorEncoder_Manager::register_instance(MotorEncoder *instance, PIO pio, uint sm)
 {
-    instances[4*getPioI(pio) + sm] = instance;
+    instances[4*get_pio_i(pio) + sm] = instance;
 };
 
 // class that reads PWM pulses from up to 4 pins
@@ -67,7 +67,7 @@ int MotorEncoder::init()
     // per pio settings
     init_interrupt();
 
-    MotorEncoder_Manager::getManager()->register_instance(this, _pio, _sm);
+    MotorEncoder_Manager::get_manager()->register_instance(this, _pio, _sm);
 
     add_repeating_timer_us(_timeout_us, &repeating_timer_callback, this, &_timer);
 
@@ -75,7 +75,7 @@ int MotorEncoder::init()
     return 0;
 };
 
-PIO MotorEncoder::getPIO()
+PIO MotorEncoder::get_pio()
 {
     return _pio;
 }
@@ -86,7 +86,7 @@ void MotorEncoder::handle_interrupt()
     // read direction from FIFO
     _dir = (pio_sm_get(_pio, _sm) & 0b10);
     _dir = !_dir;
-    
+
     // read duration from FIFO
     uint val = pio_sm_get(_pio, _sm);
     
@@ -105,8 +105,8 @@ void MotorEncoder::handle_repeating_timer()
 };
 
 int MotorEncoder::claim_pio_sm(){
-    MotorEncoder_Manager *manager = MotorEncoder_Manager::getManager();
-    PIO pio = manager->getUsedPIO();;
+    MotorEncoder_Manager *manager = MotorEncoder_Manager::get_manager();
+    PIO pio = manager->get_used_pio();;
     int sm = -1;
     bool pio_full = false;
 

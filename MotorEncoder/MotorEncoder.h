@@ -18,11 +18,11 @@ class MotorEncoder;
 class MotorEncoder_Manager
 {
     private:
-        static MotorEncoder_Manager* managerPtr;
+        static MotorEncoder_Manager* manager_ptr;
         uint prog_offset[2];
         MotorEncoder *instances[8] = {nullptr};
 
-        static uint getPioI(PIO pio)
+        static uint get_pio_i(PIO pio)
         {
             if(pio == pio0)
                 return 0;
@@ -42,19 +42,62 @@ class MotorEncoder_Manager
         // delete copy constructor
         MotorEncoder_Manager(const MotorEncoder_Manager& obj) = delete;
 
-        static MotorEncoder_Manager* getManager()
+        static MotorEncoder_Manager* get_manager()
         {
             // Create instance if not existing
-            if (managerPtr == nullptr)
-                managerPtr = new MotorEncoder_Manager();
-            return managerPtr;
+            if (manager_ptr == nullptr)
+                manager_ptr = new MotorEncoder_Manager();
+            return manager_ptr;
         }
 
-        MotorEncoder *getInstance(PIO pio, uint sm);
-        PIO getUsedPIO();
+        /**
+         * @brief Get the MotorEncoder instance, running at a given State Machine
+         * 
+         * @param pio 
+         * @param sm 
+         * @return MotorEncoder* 
+         */
+        MotorEncoder *get_instance(PIO pio, uint sm);
+
+        /**
+         * @brief Get a PIO wich is already used by MotorEncoder
+         * 
+         * @return nullptr if no PIO is used, PIO otherwise
+         */
+        PIO get_used_pio();
+
+        /**
+         * @brief Returns whether a PIO is already used by MotorEncoder
+         * 
+         * @param pio 
+         * @return true 
+         * @return false 
+         */
         bool is_pio_used(PIO pio);
+
+        /**
+         * @brief Get the prog offset in PIO memory 
+         * 
+         * @param pio 
+         * @return offset, 0 if PIO is not used -> call is_pio_used()
+         */
         uint get_prog_offset(PIO pio);
+
+        /**
+         * @brief Set the prog offset on a PIO. Called by MotorEncoder during init.
+         * 
+         * @param pio 
+         * @param offset 
+         */
         void set_prog_offset(PIO pio, uint offset);
+
+        /**
+         * @brief Register new MotorEncoder. Called by MotorEncoder during init.
+         * 
+         * @param instance 
+         * @param pio 
+         * @param sm 
+         */
         void register_instance(MotorEncoder * instance, PIO pio, uint sm);
 
 
@@ -91,7 +134,7 @@ public:
      * 
      * @return PIO
      */
-    PIO getPIO();
+    PIO get_pio();
 
     /**
      * @brief Get the turning direction
@@ -161,7 +204,7 @@ private:
     static void pio_irq_handler()
     {
         MotorEncoder *instance = nullptr;
-        MotorEncoder_Manager *manager = MotorEncoder_Manager::getManager();
+        MotorEncoder_Manager *manager = MotorEncoder_Manager::get_manager();
 
         // check which IRQ was raised:
         for (int i = 0; i < 4; i++)
@@ -169,11 +212,11 @@ private:
             // Get the right instance from the manager
             if (pio0_hw->irq & 1<<i)
             {
-                instance = manager->getInstance(pio0, i);
+                instance = manager->get_instance(pio0, i);
             }
             else if (pio1_hw->irq & 1<<i)
             {
-                instance = manager->getInstance(pio1, i);
+                instance = manager->get_instance(pio1, i);
             }
         }
         // Call the handler function of the object

@@ -9,8 +9,6 @@ pico_generate_pio_header(MotorEncoder ${CMAKE_CURRENT_LIST_DIR}/MotorEncoder.pio
 target_link_libraries(MotorEncoder
         pico_stdlib
         hardware_pio
-        hardware_pwm
-        hardware_gpio
         )
 
 target_include_directories(MotorEncoder PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

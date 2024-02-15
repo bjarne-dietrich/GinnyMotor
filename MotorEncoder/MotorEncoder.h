@@ -1,11 +1,8 @@
 #ifndef MotorEncoder_H
 #define MotorEncoder_H
 
-#include <stdio.h>
-
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
-#include "hardware/gpio.h"
 #include "MotorEncoder.pio.h"
 
 #define ERR_NO_PIO_SM_AVAILABLE -1
